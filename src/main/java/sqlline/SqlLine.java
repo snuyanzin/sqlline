@@ -555,7 +555,7 @@ public class SqlLine {
         } else if (args[i].equals("-f")) {
           getOpts().setRun(args[++i]);
         } else if (args[i].equals("-log")) {
-          logFile = args[++i];
+          logfile = args[++i];
         } else if (args[i].equals("-nn")) {
           nickname = args[++i];
         } else {
