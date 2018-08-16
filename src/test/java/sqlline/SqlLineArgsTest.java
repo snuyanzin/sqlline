@@ -714,16 +714,26 @@ public class SqlLineArgsTest {
             containsString("'PUBLIC','SCOTT','SALGRADE','TABLE','',")));
   }
 
+  /**
+   *  java.lang.NullPointerException test case from
+   *  https://github.com/julianhyde/sqlline/pull/86#issuecomment-410868361
+   */
   @Test
   public void testCsvDelimiterAndQuoteCharacter() throws Throwable {
     final String script = "!set outputformat csv\n"
-        + "!set csvDelimiter ##\n"
+        + "!set csvDelimiter null\n"
         + "!set csvQuoteCharacter @\n"
+        + "values ('#', '@#@', 1, date '1969-07-20', null, ' 1''2\"3\t4');\n"
+        + "!set csvDelimiter ##\n"
         + "values ('#', '@#@', 1, date '1969-07-20', null, ' 1''2\"3\t4');\n";
-    final String line1 = "@C1@##@C2@##@C3@##@C4@##@C5@##@C6@";
-    final String line2 = "@#@##@@@#@@@##@1@##@1969-07-20@##@@##@ 1'2\"3\t4@";
+    final String line1 = "@C1@null@C2@null@C3@null@C4@null@C5@null@C6@";
+    final String line2 =
+        "@#@null@@@#@@@null@1@null@1969-07-20@null@@null@ 1'2\"3\t4@";
+    final String line3 = "@C1@##@C2@##@C3@##@C4@##@C5@##@C6@";
+    final String line4 = "@#@##@@@#@@@##@1@##@1969-07-20@##@@##@ 1'2\"3\t4@";
     checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
-        allOf(containsString(line1), containsString(line2)));
+        CoreMatchers.allOf(containsString(line1), containsString(line2),
+            containsString(line3), containsString(line4)));
   }
 
   @Test
@@ -866,6 +876,39 @@ public class SqlLineArgsTest {
             containsString(line0),
             containsString(line1)));
   }
+
+  @Test
+  public void testEmptyMetadata() throws Throwable {
+    final String script = "!metadata\n";
+    final String line = "Usage: metadata <methodname> <params...>";
+    checkScriptFile(script, true, equalTo(SqlLine.Status.OTHER),
+        allOf(containsString(line), not(containsString("Exception"))));
+  }
+
+  @Test
+  public void testEmptyRecord() throws Throwable {
+    final String line = "Usage: record <file name>";
+    checkScriptFile(
+        "!record", true, equalTo(SqlLine.Status.OTHER),
+        allOf(containsString(line), not(containsString("Exception"))));
+  }
+
+  @Test
+  public void testEmptyRun() throws Throwable {
+    final String line = "Usage: run <file name>";
+    checkScriptFile(
+        "!run", true, equalTo(SqlLine.Status.OTHER),
+        allOf(containsString(line), not(containsString("Exception"))));
+  }
+
+  @Test
+  public void testEmptyScript() throws Throwable {
+    final String line = "Usage: script <file name>";
+    checkScriptFile(
+        "!script", true, equalTo(SqlLine.Status.OTHER),
+        allOf(containsString(line), not(containsString("Exception"))));
+  }
+
 
   // Work around compile error in JDK 1.6
   private static Matcher<String> allOf(Matcher<String> m1,
