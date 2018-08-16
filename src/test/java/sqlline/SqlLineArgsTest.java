@@ -529,9 +529,12 @@ public class SqlLineArgsTest {
   private void assertFileContains(File file, Matcher matcher)
       throws IOException {
     final BufferedReader br = new BufferedReader(new FileReader(file));
-    String line;
     final StringWriter stringWriter = new StringWriter();
-    while ((line = br.readLine()) != null) {
+    for (;;) {
+      final String line = br.readLine();
+      if (line == null) {
+        break;
+      }
       stringWriter.write(line);
       stringWriter.write("\n");
     }
