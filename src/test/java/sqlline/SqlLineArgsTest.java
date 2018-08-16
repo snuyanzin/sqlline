@@ -264,6 +264,42 @@ public class SqlLineArgsTest {
                             + "+-------------+-------------+-----+\n"));
   }
 
+  @Test
+  public void testScan() throws Throwable {
+    checkScriptFile(
+        "!scan\n",
+        false,
+        equalTo(SqlLine.Status.OK),
+        containsString(
+            "Compliant Version Driver Class\n"
+            + "yes       2.3     org.hsqldb.jdbcDriver"));
+  }
+
+  /**
+   * Table output without header.
+   */
+  @Test
+  public void testTableOutputNullWithoutHeader() throws Throwable {
+    checkScriptFile("!set showHeader false\n"
+        + "values (1, cast(null as integer), cast(null as varchar(3));\n",
+        false,
+        equalTo(SqlLine.Status.OK),
+        containsString("| 1           | null        |     |\n"));
+  }
+
+  /**
+   * Csv output without header.
+   */
+  @Test
+  public void testCsvNullWithoutHeader() throws Throwable {
+    checkScriptFile("!set showHeader false\n"
+        + "!set outputformat csv\n"
+        + "values (1, cast(null as integer), cast(null as varchar(3));\n",
+        false,
+        equalTo(SqlLine.Status.OK),
+        containsString("'1','null',''\n"));
+  }
+
   /**
    * Tests the "close" command,
    * [HIVE-5768] Beeline connection cannot be closed with '!close' command.
@@ -672,6 +708,54 @@ public class SqlLineArgsTest {
         Collections.singletonList("!quit"), new DispatchCallback());
     assertTrue(beeLine.isExit());
   }
+  
+  /**
+   * Test the connect line
+   * !connect "jdbc:h2:mem; PASSWORD_HASH=TRUE" sa 6e6f6e456d707479506173737764
+   * */
+  @Test
+  public void testConnectWithDbProperty() throws Throwable {
+    SqlLine beeLine = new SqlLine();
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    PrintStream beelineOutputStream = new PrintStream(os);
+    beeLine.setOutputStream(beelineOutputStream);
+    beeLine.setErrorStream(beelineOutputStream);
+    final InputStream is = new ByteArrayInputStream(new byte[0]);
+    SqlLine.Status status = beeLine.begin(new String[]{}, is, false);
+    assertThat(status, equalTo(SqlLine.Status.OK));
+    DispatchCallback dc = new DispatchCallback();
+    beeLine.runCommands(Collections.singletonList("!set maxwidth 80"), dc);
+    //fail attempt
+    String fakeNonEmptyPassword = "nonEmptyPasswd";
+    beeLine.runCommands(
+        Collections.singletonList("!connect \""
+            + ConnectionSpec.H2.url
+            + " ;PASSWORD_HASH=TRUE\" "
+            + ConnectionSpec.H2.username
+            + " \"" + fakeNonEmptyPassword + "\""), dc);
+    String output = os.toString("UTF8");
+    assertThat(output,
+        containsString("Error: Hexadecimal string contains "
+            + "non-hex character: \"" + fakeNonEmptyPassword + "\" "
+            + "[90004-191] (state=90004,code=90004)"));
+    os.reset();
+
+    //success attempt
+    beeLine.runCommands(
+        Collections.singletonList("!connect \""
+            + ConnectionSpec.H2.url
+            + " ;PASSWORD_HASH=TRUE\" "
+            + ConnectionSpec.H2.username + " \""
+            + StringUtils.convertBytesToHex(fakeNonEmptyPassword.getBytes())
+            + "\""), dc);
+    beeLine.runCommands(Collections.singletonList("!tables"), dc);
+    output = os.toString("UTF8");
+    assertThat(output, containsString("| TABLE_CAT | TABLE_SCHEM | "
+        + "TABLE_NAME | TABLE_TYPE | REMARKS | TYPE_CAT | TYP |"));
+    beeLine.runCommands(
+        Collections.singletonList("!quit"), new DispatchCallback());
+    assertTrue(beeLine.isExit());
+  }
 
   /** Displays usage. */
   @Test
@@ -748,16 +832,26 @@ public class SqlLineArgsTest {
             containsString("'PUBLIC','SCOTT','SALGRADE','TABLE','',")));
   }
 
+  /**
+   *  java.lang.NullPointerException test case from
+   *  https://github.com/julianhyde/sqlline/pull/86#issuecomment-410868361
+   */
   @Test
   public void testCsvDelimiterAndQuoteCharacter() throws Throwable {
     final String script = "!set outputformat csv\n"
-        + "!set csvDelimiter ##\n"
+        + "!set csvDelimiter null\n"
         + "!set csvQuoteCharacter @\n"
+        + "values ('#', '@#@', 1, date '1969-07-20', null, ' 1''2\"3\t4');\n"
+        + "!set csvDelimiter ##\n"
         + "values ('#', '@#@', 1, date '1969-07-20', null, ' 1''2\"3\t4');\n";
-    final String line1 = "@C1@##@C2@##@C3@##@C4@##@C5@##@C6@";
-    final String line2 = "@#@##@@@#@@@##@1@##@1969-07-20@##@@##@ 1'2\"3\t4@";
+    final String line1 = "@C1@null@C2@null@C3@null@C4@null@C5@null@C6@";
+    final String line2 =
+        "@#@null@@@#@@@null@1@null@1969-07-20@null@@null@ 1'2\"3\t4@";
+    final String line3 = "@C1@##@C2@##@C3@##@C4@##@C5@##@C6@";
+    final String line4 = "@#@##@@@#@@@##@1@##@1969-07-20@##@@##@ 1'2\"3\t4@";
     checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
-        allOf(containsString(line1), containsString(line2)));
+        CoreMatchers.allOf(containsString(line1), containsString(line2),
+            containsString(line3), containsString(line4)));
   }
 
   @Test
@@ -766,6 +860,36 @@ public class SqlLineArgsTest {
         + "!set\n";
     checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
         containsString("numberformat        null"));
+  }
+
+  @Test
+  public void testSelectXmlAttributes() throws Throwable {
+    final String script = "!set outputformat xmlattr\n"
+        + "values (1, -1.5, 1 = 1, date '1969-07-20', null, ']]> 1''2\"3\t<>&4');\n";
+    checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
+        allOf(
+            containsString("<resultset>"),
+            containsString("<result C1=\"1\" C2=\"-1.5\" C3=\"TRUE\" "
+                + "C4=\"1969-07-20\" C5=\"null\" "
+                + "C6=\"]]&gt; 1'2&quot;3\t&lt;>&amp;4\"/>")));
+  }
+
+  @Test
+  public void testSelectXmlElements() throws Throwable {
+    final String script = "!set outputformat xmlelements\n"
+        + "values (1, -1.5, 1 = 1, date '1969-07-20', null, ' ]]>1''2\"3\t<>&4');\n";
+    checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
+        CoreMatchers.allOf(
+            containsString("<resultset>"),
+            containsString("<result>"),
+            containsString("<C1>1</C1>"),
+            containsString("<C2>-1.5</C2>"),
+            containsString("<C3>TRUE</C3>"),
+            containsString("<C4>1969-07-20</C4>"),
+            containsString("<C5>null</C5>"),
+            containsString("<C6> ]]&gt;1'2\"3\t&lt;>&amp;4</C6>"),
+            containsString("</result>"),
+            containsString("</resultset>")));
   }
 
   @Test
@@ -791,6 +915,21 @@ public class SqlLineArgsTest {
             containsString("{\"C1\":1,\"C2\":-1.5,\"C3\":true,"
                 + "\"C4\":\"1969-07-20\",\"C5\":null,"
                 + "\"C6\":\" 1'2\\\"3\\t4\"}")));
+  }
+
+  @Test
+  public void testNullValue() throws Throwable {
+    final String script = "!set nullValue %%%\n"
+        + "!set outputformat csv\n"
+        + "values (NULL, -1.5, null, date '1969-07-20', null, 'null');\n"
+        + "!set nullValue \"'\"\n"
+        + "values (NULL, -1.5, null, date '1969-07-20', null, 'null');\n";
+    checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
+        CoreMatchers.allOf(
+            containsString("'C1','C2','C3','C4','C5','C6'"),
+            containsString("'%%%','-1.5','%%%','1969-07-20','%%%','null'"),
+            containsString("'C1','C2','C3','C4','C5','C6'"),
+            containsString("'''','-1.5','''','1969-07-20','''','null'")));
   }
 
   @Test
@@ -901,6 +1040,30 @@ public class SqlLineArgsTest {
             containsString(line1)));
   }
 
+  /**
+   * Test case for
+   * <a href="https://github.com/julianhyde/sqlline/issues/107">[SQLLINE-107],
+   * Script fails if the wrong driver is specified with -d option
+   * and there is a valid registered driver for the specified url</a>.
+   */
+  @Test
+  public void testTablesH2WithErrorDriver() throws Throwable {
+    connectionSpec = ConnectionSpec.ERROR_H2_DRIVER;
+    // Set width so we don't inherit from the current terminal.
+    final String script = "!set maxwidth 80\n"
+        + "!tables\n";
+    final String line0 = "| TABLE_CAT | TABLE_SCHEM | TABLE_NAME |";
+    final String line1 =
+        "| UNNAMED   | INFORMATION_SCHEMA | CATALOGS   | SYSTEM TABLE";
+    checkScriptFile(script, true, equalTo(SqlLine.Status.OK),
+        CoreMatchers.allOf(containsString("The specified driver "
+            + connectionSpec.driver
+            + " not found. The registered driver org.h2.Driver will be used instead"),
+            not(containsString("NullPointerException")),
+            containsString(line0),
+            containsString(line1)));
+  }
+
   @Test
   public void testEmptyMetadata() throws Throwable {
     final String script = "!metadata\n";
@@ -958,6 +1121,9 @@ public class SqlLineArgsTest {
 
     public static final ConnectionSpec H2 =
         new ConnectionSpec("jdbc:h2:mem:", "sa", "", "org.h2.Driver");
+
+    public static final ConnectionSpec ERROR_H2_DRIVER =
+        new ConnectionSpec("jdbc:h2:mem:", "sa", "", "ERROR_DRIVER");
 
     public static final ConnectionSpec HSQLDB =
         new ConnectionSpec(
