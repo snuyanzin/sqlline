@@ -12,6 +12,7 @@
 package sqlline;
 
 import junit.framework.TestCase;
+import sqlline.outputformat.ColorBuffer;
 
 /**
  * Test cases for SQLLine.

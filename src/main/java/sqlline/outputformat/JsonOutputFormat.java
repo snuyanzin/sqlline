@@ -9,10 +9,12 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 import java.sql.SQLException;
 import java.sql.Types;
+
+import sqlline.SqlLine;
 
 /**
  * Implementation of {@link OutputFormat} that formats rows as JSON.

@@ -9,7 +9,7 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 /**
  * Converts a collection of rows into text.

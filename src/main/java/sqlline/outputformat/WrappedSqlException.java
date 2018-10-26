@@ -9,7 +9,7 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -22,7 +22,7 @@ import java.sql.SQLException;
  * wrapped exception which can be handled as a SQLException
  * would be handled.
  */
-class WrappedSqlException extends RuntimeException {
+public class WrappedSqlException extends RuntimeException {
 
   /** Creates a WrappedSQLException. */
   WrappedSqlException(SQLException ex) {

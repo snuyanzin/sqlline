@@ -9,7 +9,9 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
+
+import sqlline.SqlLine;
 
 /**
  * Abstract OutputFormat.

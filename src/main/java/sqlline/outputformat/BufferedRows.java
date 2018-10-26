@@ -9,13 +9,15 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
+import sqlline.SqlLine;
 
 /**
  * Rows implementation which buffers all rows in a linked list.

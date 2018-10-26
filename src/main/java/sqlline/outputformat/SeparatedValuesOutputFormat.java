@@ -9,24 +9,26 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
+
+import sqlline.SqlLine;
 
 /**
  * OutputFormat for values separated by a delimiter.
  */
-class SeparatedValuesOutputFormat extends AbstractOutputFormat {
+public class SeparatedValuesOutputFormat extends AbstractOutputFormat {
   private static final char DEFAULT_QUOTE_CHARACTER = '"';
   final String separator;
   final char quoteCharacter;
 
-  SeparatedValuesOutputFormat(SqlLine sqlLine,
+  public SeparatedValuesOutputFormat(SqlLine sqlLine,
       String separator, char quoteCharacter) {
     super(sqlLine);
     this.separator = separator;
     this.quoteCharacter = quoteCharacter;
   }
 
-  SeparatedValuesOutputFormat(SqlLine sqlLine, String separator) {
+  public SeparatedValuesOutputFormat(SqlLine sqlLine, String separator) {
     this(sqlLine, separator, DEFAULT_QUOTE_CHARACTER);
   }
 

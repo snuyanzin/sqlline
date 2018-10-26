@@ -9,11 +9,14 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.NoSuchElementException;
+
+import sqlline.DispatchCallback;
+import sqlline.SqlLine;
 
 /**
  * Rows implementation which returns rows incrementally from result set

@@ -9,7 +9,7 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * A buffer that can output segments using ANSI color.
  */
-final class ColorBuffer implements Comparable {
+public final class ColorBuffer implements Comparable {
   /** Style attribute. */
   enum ColorAttr {
     BOLD("\033[1m"),
@@ -49,12 +49,12 @@ final class ColorBuffer implements Comparable {
 
   private final boolean useColor;
 
-  ColorBuffer(boolean useColor) {
+  public ColorBuffer(boolean useColor) {
     this.useColor = useColor;
     append("");
   }
 
-  ColorBuffer(String str, boolean useColor) {
+  public ColorBuffer(String str, boolean useColor) {
     this.useColor = useColor;
     append(str);
   }
@@ -67,7 +67,7 @@ final class ColorBuffer implements Comparable {
    * @return the passed in String with spaces appended until the
    *         length matches the specified length.
    */
-  ColorBuffer pad(ColorBuffer str, int len) {
+  public ColorBuffer pad(ColorBuffer str, int len) {
     int n = str.getVisibleLength();
     while (n < len) {
       str.append(" ");
@@ -77,11 +77,11 @@ final class ColorBuffer implements Comparable {
     return append(str);
   }
 
-  ColorBuffer center(String str, int len) {
+  public ColorBuffer center(String str, int len) {
     return append(centerString(str, len));
   }
 
-  static String centerString(String str, int len) {
+  public static String centerString(String str, int len) {
     final int n = len - str.length();
     if (n <= 0) {
       return str;
@@ -99,7 +99,7 @@ final class ColorBuffer implements Comparable {
     return buf.toString();
   }
 
-  ColorBuffer pad(String str, int len) {
+  public ColorBuffer pad(String str, int len) {
     if (str == null) {
       str = "";
     }

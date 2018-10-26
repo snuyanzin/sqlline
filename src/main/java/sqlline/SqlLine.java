@@ -35,6 +35,10 @@ import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
+import sqlline.outputformat.ColorBuffer;
+import sqlline.outputformat.OutputFormat;
+import sqlline.outputformat.WrappedSqlException;
+
 /**
  * A console SQL shell with command completion.
  *
@@ -159,7 +163,7 @@ public class SqlLine {
     }
   }
 
-  String loc(String res, Object... params) {
+  public String loc(String res, Object... params) {
     return locStatic(RESOURCE_BUNDLE, getErrorStream(), res, params);
   }
 
@@ -282,7 +286,7 @@ public class SqlLine {
     return getDatabaseConnections().current().connection;
   }
 
-  DatabaseMetaData getDatabaseMetaData() {
+  public DatabaseMetaData getDatabaseMetaData() {
     if (getDatabaseConnections().current() == null) {
       throw new IllegalArgumentException(loc("no-current-connection"));
     }
@@ -297,7 +301,7 @@ public class SqlLine {
    * Entry point to creating a {@link ColorBuffer} with color
    * enabled or disabled depending on the value of {@link SqlLineOpts#getColor}.
    */
-  ColorBuffer getColorBuffer() {
+  public ColorBuffer getColorBuffer() {
     return new ColorBuffer(getOpts().getColor());
   }
 
@@ -305,7 +309,7 @@ public class SqlLine {
    * Entry point to creating a {@link ColorBuffer} with color enabled or
    * disabled depending on the value of {@link SqlLineOpts#getColor}.
    */
-  ColorBuffer getColorBuffer(String msg) {
+  public ColorBuffer getColorBuffer(String msg) {
     return new ColorBuffer(msg, getOpts().getColor());
   }
 
@@ -1322,55 +1326,6 @@ public class SqlLine {
     }
   }
 
-  static String xmlEncode(String str, String charsCouldBeNotEncoded) {
-    if (str == null) {
-      return str;
-    }
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < str.length(); i++) {
-      char ch = str.charAt(i);
-      switch (ch) {
-      case '"' :
-        // could be skipped for xml attribute in case of single quotes
-        // could be skipped for element text
-        if (charsCouldBeNotEncoded.indexOf(ch) == -1) {
-          sb.append("&quot;");
-        } else {
-          sb.append(ch);
-        }
-        break;
-      case '<' :
-        sb.append("&lt;");
-        break;
-      case '&' :
-        sb.append("&amp;");
-        break;
-      case '>' :
-        // could be skipped for xml attribute and there is no sequence ]]>
-        // could be skipped for element text and there is no sequence ]]>
-        if ((i > 1 && str.charAt(i - 1) == ']' && str.charAt(i - 2) == ']')
-            || charsCouldBeNotEncoded.indexOf(ch) == -1) {
-          sb.append("&gt;");
-        } else {
-          sb.append(ch);
-        }
-        break;
-      case '\'' :
-        // could be skipped for xml attribute in case of double quotes
-        // could be skipped for element text
-        if (charsCouldBeNotEncoded.indexOf(ch) == -1) {
-          sb.append("&apos;");
-        } else {
-          sb.append(ch);
-        }
-        break;
-      default:
-        sb.append(ch);
-      }
-    }
-    return sb.toString();
-  }
-
   /**
    * Split the line based on spaces, asserting that the number of words is
    * correct.
@@ -1610,45 +1565,6 @@ public class SqlLine {
     return driverClasses;
   }
 
-  ///////////////////////////////////////
-  // ResultSet output formatting classes
-  ///////////////////////////////////////
-
-  int print(ResultSet rs, DispatchCallback callback) throws SQLException {
-    String format = getOpts().getOutputFormat();
-    OutputFormat f = getOutputFormats().get(format);
-    if ("csv".equals(format)) {
-      final SeparatedValuesOutputFormat csvOutput =
-          (SeparatedValuesOutputFormat) f;
-      if ((csvOutput.separator == null && getOpts().getCsvDelimiter() != null)
-          || (csvOutput.separator != null
-              && !csvOutput.separator.equals(getOpts().getCsvDelimiter())
-              || csvOutput.quoteCharacter
-                  != getOpts().getCsvQuoteCharacter())) {
-        f = new SeparatedValuesOutputFormat(this,
-            getOpts().getCsvDelimiter(), getOpts().getCsvQuoteCharacter());
-        Map<String, OutputFormat> updFormats =
-            new HashMap<>(getOutputFormats());
-        updFormats.put("csv", f);
-        updateOutputFormats(updFormats);
-      }
-    }
-
-    if (f == null) {
-      error(loc("unknown-format", format, getOutputFormats().keySet()));
-      f = new TableOutputFormat(this);
-    }
-
-    Rows rows;
-    if (getOpts().getIncremental()) {
-      rows = new IncrementalRows(this, rs, callback);
-    } else {
-      rows = new BufferedRows(this, rs);
-    }
-
-    return f.print(rows);
-  }
-
   Statement createStatement() throws SQLException {
     Statement stmnt = getDatabaseConnection().connection.createStatement();
     int timeout = getOpts().getTimeout();
@@ -1820,6 +1736,10 @@ public class SqlLine {
 
   void setLineReader(LineReader reader) {
     this.lineReader = reader;
+  }
+
+  public int getTerminalWidth() {
+    return lineReader == null ? -1 : lineReader.getTerminal().getWidth();
   }
 
   List<String> getBatch() {

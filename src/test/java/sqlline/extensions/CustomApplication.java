@@ -24,10 +24,10 @@ import org.jline.reader.impl.completer.StringsCompleter;
 import sqlline.Application;
 import sqlline.BuiltInProperty;
 import sqlline.CommandHandler;
-import sqlline.OutputFormat;
 import sqlline.ReflectiveCommandHandler;
 import sqlline.SqlLine;
 import sqlline.SqlLineOpts;
+import sqlline.outputformat.OutputFormat;
 
 /**
  * Sub-class of {@link Application} that is used to test custom

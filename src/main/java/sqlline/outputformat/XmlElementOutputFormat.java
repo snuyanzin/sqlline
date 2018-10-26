@@ -9,17 +9,17 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
+
+import sqlline.SqlLine;
 
 /**
  * Implementation of {@link OutputFormat} that formats rows as XML
- * elements, and each of their columns as an XML attribute.
+ * elements, and each of their columns as a nested XML element.
  */
-class XmlAttributeOutputFormat extends AbstractOutputFormat {
-  // '> in case double quotes for attribute value
-  // "> in case single quotes for attribute value
-  private static final String ALLOWED_NOT_ENCODE_SYMBOLS = "'>";
-  XmlAttributeOutputFormat(SqlLine sqlLine) {
+public class XmlElementOutputFormat extends AbstractOutputFormat {
+  private static final String ALLOWED_NOT_ENCODE_SYMBOLS = "'\">";
+  public XmlElementOutputFormat(SqlLine sqlLine) {
     super(sqlLine);
   }
 
@@ -35,17 +35,16 @@ class XmlAttributeOutputFormat extends AbstractOutputFormat {
     String[] head = header.values;
     String[] vals = row.values;
 
-    StringBuilder result = new StringBuilder("  <result");
-
+    sqlLine.output("  <result>");
     for (int i = 0; (i < head.length) && (i < vals.length); i++) {
-      result.append(' ').append(head[i]).append("=\"").append(
-          SqlLine.xmlEncode(vals[i], ALLOWED_NOT_ENCODE_SYMBOLS)).append('"');
+      sqlLine.output(
+          "    <" + head[i] + ">"
+              + (Rows.xmlEncode(vals[i], ALLOWED_NOT_ENCODE_SYMBOLS))
+              + "</" + head[i] + ">");
     }
 
-    result.append("/>");
-
-    sqlLine.output(result.toString());
+    sqlLine.output("  </result>");
   }
 }
 
-// End XmlAttributeOutputFormat.java
+// End XmlElementOutputFormat.java

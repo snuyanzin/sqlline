@@ -21,6 +21,9 @@ import java.util.*;
 import org.jline.reader.History;
 import org.jline.reader.UserInterruptException;
 
+import sqlline.outputformat.ColorBuffer;
+import sqlline.outputformat.OutputFormatter;
+
 /**
  * Collection of available commands.
  */
@@ -205,7 +208,7 @@ public class Commands {
       if (res instanceof ResultSet) {
         ResultSet rs = (ResultSet) res;
         try {
-          sqlLine.print(rs, callback);
+          OutputFormatter.print(sqlLine, rs, callback);
         } finally {
           rs.close();
         }
@@ -941,7 +944,7 @@ public class Commands {
           do {
             ResultSet rs = stmnt.getResultSet();
             try {
-              int count = sqlLine.print(rs, callback);
+              int count = OutputFormatter.print(sqlLine, rs, callback);
               long end = System.currentTimeMillis();
 
               reportResult(sqlLine.loc("rows-selected", count), start, end);

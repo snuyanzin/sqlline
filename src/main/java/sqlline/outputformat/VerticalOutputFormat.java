@@ -9,15 +9,17 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
+
+import sqlline.SqlLine;
 
 /**
  * OutputFormat for vertical column name: value format.
  */
-class VerticalOutputFormat implements OutputFormat {
+public class VerticalOutputFormat implements OutputFormat {
   private final SqlLine sqlLine;
 
-  VerticalOutputFormat(SqlLine sqlLine) {
+  public VerticalOutputFormat(SqlLine sqlLine) {
     this.sqlLine = sqlLine;
   }
 

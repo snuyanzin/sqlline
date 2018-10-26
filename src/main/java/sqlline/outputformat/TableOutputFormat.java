@@ -9,15 +9,18 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
+
+import sqlline.BuiltInProperty;
+import sqlline.SqlLine;
 
 /**
  * OutputFormat for a pretty, table-like format.
  */
-class TableOutputFormat implements OutputFormat {
+public class TableOutputFormat implements OutputFormat {
   private final SqlLine sqlLine;
 
-  TableOutputFormat(SqlLine sqlLine) {
+  public TableOutputFormat(SqlLine sqlLine) {
     this.sqlLine = sqlLine;
   }
 
@@ -27,9 +30,8 @@ class TableOutputFormat implements OutputFormat {
     ColorBuffer headerCols = null;
     final int maxWidth =
         sqlLine.getOpts().getInt(BuiltInProperty.MAX_WIDTH);
-    final int width = (maxWidth == 0
-            && sqlLine.getLineReader() != null
-        ? sqlLine.getLineReader().getTerminal().getWidth()
+    final int width = (maxWidth == 0 && sqlLine.getTerminalWidth() != -1
+        ? sqlLine.getTerminalWidth()
         : maxWidth) - 4;
 
     // normalize the columns sizes

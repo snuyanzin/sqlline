@@ -31,6 +31,14 @@ import org.jline.builtins.Completers.FileNameCompleter;
 import org.jline.reader.Completer;
 import org.jline.reader.impl.completer.StringsCompleter;
 
+import sqlline.outputformat.JsonOutputFormat;
+import sqlline.outputformat.OutputFormat;
+import sqlline.outputformat.SeparatedValuesOutputFormat;
+import sqlline.outputformat.TableOutputFormat;
+import sqlline.outputformat.VerticalOutputFormat;
+import sqlline.outputformat.XmlAttributeOutputFormat;
+import sqlline.outputformat.XmlElementOutputFormat;
+
 /**
  * Defines the configuration of a SQLLine application.
  *

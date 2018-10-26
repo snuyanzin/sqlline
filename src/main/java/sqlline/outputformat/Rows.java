@@ -9,7 +9,7 @@
 //
 // http://opensource.org/licenses/BSD-3-Clause
 */
-package sqlline;
+package sqlline.outputformat;
 
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -30,6 +30,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import sqlline.BuiltInProperty;
+import sqlline.SqlLine;
 
 /**
  * Abstract base class representing a set of rows to be displayed.
@@ -144,7 +147,7 @@ abstract class Rows implements Iterator<Rows.Row> {
 
       // Retrieve the catalog and schema name for this connection.
       // Either or both may be null.
-      DatabaseMetaData dbMeta = sqlLine.getDatabaseConnection().meta;
+      DatabaseMetaData dbMeta = sqlLine.getDatabaseMetaData();
       String catalog = dbMeta.getConnection().getCatalog();
       String schema = rsMeta.getSchemaName(colNum);
 
@@ -360,7 +363,7 @@ abstract class Rows implements Iterator<Rows.Row> {
   private Set<String> loadAndCachePrimaryKeysForTable(TableKey tableKey) {
     Set<String> primaryKeys = new HashSet<>();
     try {
-      ResultSet pks = sqlLine.getDatabaseConnection().meta.getPrimaryKeys(
+      ResultSet pks = sqlLine.getDatabaseMetaData().getPrimaryKeys(
           tableKey.catalog, tableKey.schema, tableKey.table);
       try {
         while (pks.next()) {
@@ -401,6 +404,55 @@ abstract class Rows implements Iterator<Rows.Row> {
       primaryKeys = loadAndCachePrimaryKeysForTable(tableKey);
     }
     return primaryKeys;
+  }
+
+  static String xmlEncode(String str, String charsCouldBeNotEncoded) {
+    if (str == null) {
+      return str;
+    }
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < str.length(); i++) {
+      char ch = str.charAt(i);
+      switch (ch) {
+      case '"' :
+        // could be skipped for xml attribute in case of single quotes
+        // could be skipped for element text
+        if (charsCouldBeNotEncoded.indexOf(ch) == -1) {
+          sb.append("&quot;");
+        } else {
+          sb.append(ch);
+        }
+        break;
+      case '<' :
+        sb.append("&lt;");
+        break;
+      case '&' :
+        sb.append("&amp;");
+        break;
+      case '>' :
+        // could be skipped for xml attribute and there is no sequence ]]>
+        // could be skipped for element text and there is no sequence ]]>
+        if ((i > 1 && str.charAt(i - 1) == ']' && str.charAt(i - 2) == ']')
+            || charsCouldBeNotEncoded.indexOf(ch) == -1) {
+          sb.append("&gt;");
+        } else {
+          sb.append(ch);
+        }
+        break;
+      case '\'' :
+        // could be skipped for xml attribute in case of double quotes
+        // could be skipped for element text
+        if (charsCouldBeNotEncoded.indexOf(ch) == -1) {
+          sb.append("&apos;");
+        } else {
+          sb.append(ch);
+        }
+        break;
+      default:
+        sb.append(ch);
+      }
+    }
+    return sb.toString();
   }
 
   /**
