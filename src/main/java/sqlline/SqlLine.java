@@ -37,6 +37,12 @@ import org.jline.terminal.TerminalBuilder;
 
 import static org.jline.keymap.KeyMap.alt;
 
+import static sqlline.SqlLineInitArgsEnum.COMMANDS;
+import static sqlline.SqlLineInitArgsEnum.COMMAND_HANDLER;
+import static sqlline.SqlLineInitArgsEnum.DRIVER;
+import static sqlline.SqlLineInitArgsEnum.PASS;
+import static sqlline.SqlLineInitArgsEnum.USER;
+
 /**
  * A console SQL shell with command completion.
  *
@@ -72,6 +78,35 @@ public class SqlLine {
   private final Reflector reflector;
   private Application application;
   private Config appConfig;
+  private Map<SqlLineInitArg, SqlLineInitArg.OneAction> map =
+      new HashMap<SqlLineInitArg, SqlLineInitArg.OneAction>() {{
+        put(COMMAND_HANDLER, (arg, sessionPropertiesMap, callback) -> {
+          SqlLine.this.dispatch(
+              COMMAND_HANDLER.getCommand()
+                  + " " + arg.replaceAll(",", " "), callback);
+        });
+        put(SqlLineInitArgsEnum.URL, (arg, sessionPropertiesMap, callback) -> {
+          final Set<String> defaultUserPass = Collections.singleton("''");
+          final String userFromPropertiesMap =
+              sessionPropertiesMap
+                  .getOrDefault(USER, defaultUserPass).iterator().next();
+          final String user = userFromPropertiesMap.length() == 0
+              ? "''" : userFromPropertiesMap;
+          final String passFromPropertiesMap = sessionPropertiesMap
+              .getOrDefault(PASS, defaultUserPass).iterator().next();
+          final String pass = passFromPropertiesMap.length() == 0
+              ? "''" : passFromPropertiesMap;
+          final String driver = sessionPropertiesMap
+              .getOrDefault(DRIVER, Collections.singleton(""))
+              .iterator().next();
+          final String com = SqlLineInitArgsEnum.URL.getCommand() + " "
+              + sessionPropertiesMap.get(SqlLineInitArgsEnum.URL)
+              .iterator().next() + " "
+              + user + " " + pass + " " + driver;
+          debug("issuing: " + com);
+          dispatch(com, callback);
+        });
+      }};
 
   // saveDir() is used in various opts that assume it's set. But that means
   // properties starting with "sqlline" are read into props in unspecific
@@ -324,24 +359,9 @@ public class SqlLine {
     }
   }
 
-  /** Parses arguments.
-   *
-   * @param args Command-line arguments
-   * @param callback Status callback
-   * @return Whether arguments parsed successfully
-   */
-  Status initArgs(String[] args, DispatchCallback callback) {
-    List<String> commands = new LinkedList<>();
-    List<String> files = new LinkedList<>();
-    String driver = null;
-    String user = null;
-    String pass = null;
-    String url = null;
-    String nickname = null;
-    String logFile = null;
-    String commandHandler = null;
-    String appConfig = null;
-
+  Status parseArgs(
+      String[] args, Map<SqlLineInitArg, Collection<String>> arg2Value,
+      Map<String, String> propertyValues) {
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals("--help") || args[i].equals("-h")) {
         return Status.ARGS;
@@ -352,19 +372,19 @@ public class SqlLine {
         String[] parts = split(args[i].substring(2), "=");
         debug(loc("setting-prop", Arrays.asList(parts)));
         if (parts.length > 0) {
-          boolean ret;
-
-          if (parts.length >= 2) {
-            ret = getOpts().set(parts[0], parts[1], true);
+          SqlLineInitArgsEnum arg = SqlLineInitArgsEnum.fromProp(parts[0]);
+          if (parts.length == 2 && arg != null) {
+            if (arg.isMultiple()) {
+              arg2Value.putIfAbsent(arg, new HashSet<>());
+              arg2Value.get(arg).add(parts[1]);
+            } else {
+              arg2Value.put(arg, Collections.singleton(parts[1]));
+            }
           } else {
-            ret = getOpts().set(parts[0], "true", true);
-          }
-
-          if (!ret) {
-            return Status.ARGS;
+            propertyValues.put(parts[0],
+                parts.length >= 2 ? parts[1] : Boolean.TRUE.toString());
           }
         }
-
         continue;
       }
 
@@ -372,94 +392,67 @@ public class SqlLine {
         if (i == args.length - 1) {
           return Status.ARGS;
         }
-        if (args[i].equals("-d")) {
-          driver = args[++i];
-        } else if (args[i].equals("-ch")) {
-          commandHandler = args[++i];
-        } else if (args[i].equals("-n")) {
-          user = args[++i];
-        } else if (args[i].equals("-p")) {
-          pass = args[++i];
-        } else if (args[i].equals("-u")) {
-          url = args[++i];
-        } else if (args[i].equals("-e")) {
-          commands.add(args[++i]);
-        } else if (args[i].equals("-f")) {
-          getOpts().setRun(args[++i]);
-        } else if (args[i].equals("-log")) {
-          logFile = args[++i];
-        } else if (args[i].equals("-nn")) {
-          nickname = args[++i];
-        } else if (args[i].equals("-ac")) {
-          appConfig = args[++i];
+        SqlLineInitArg arg = SqlLineInitArgsEnum.of(args[i]);
+        if (arg != null) {
+          if (arg.isMultiple()) {
+            arg2Value.putIfAbsent(arg, new HashSet<>());
+            arg2Value.get(arg).add(args[++i]);
+          } else {
+            arg2Value.put(arg, Collections.singleton(args[++i]));
+          }
         } else {
           return Status.ARGS;
         }
       } else {
-        files.add(args[i]);
+        arg2Value.putIfAbsent(SqlLineInitArgsEnum.FILES, new HashSet<>());
+        arg2Value.get(SqlLineInitArgsEnum.FILES).add(args[i]);
       }
     }
+    return Status.OK;
+  }
 
-    if (appConfig != null) {
-      dispatch(COMMAND_PREFIX + "appconfig " + appConfig,
-          new DispatchCallback());
-    }
-
-    if (url != null) {
-      String com =
-          COMMAND_PREFIX + "connect "
-              + url + " "
-              + (user == null || user.length() == 0 ? "''" : user) + " "
-              + (pass == null || pass.length() == 0 ? "''" : pass) + " "
-              + (driver == null ? "" : driver);
-      debug("issuing: " + com);
-      dispatch(com, new DispatchCallback());
-    }
-
-    if (nickname != null) {
-      dispatch(COMMAND_PREFIX + "nickname " + nickname, new DispatchCallback());
-    }
-
-    if (logFile != null) {
-      dispatch(COMMAND_PREFIX + "record " + logFile, new DispatchCallback());
-    }
-
-    if (commandHandler != null) {
-      StringBuilder sb = new StringBuilder();
-      for (String chElem : commandHandler.split(",")) {
-        sb.append(chElem).append(" ");
-      }
-      dispatch(COMMAND_PREFIX + "commandhandler " + sb.toString(),
-          new DispatchCallback());
-    }
-
-    // now load properties files
-    for (String file : files) {
-      dispatch(COMMAND_PREFIX + "properties " + file, new DispatchCallback());
-    }
-
-    if (commands.size() > 0) {
-      // for single command execute, disable color
-      getOpts().set(BuiltInProperty.COLOR, false);
-      getOpts().set(BuiltInProperty.HEADER_INTERVAL, -1);
-
-      for (String command : commands) {
-        debug(loc("executing-command", command));
-        dispatch(command, new DispatchCallback());
-      }
-
-      exit = true; // execute and exit
-    }
-
+  /** Parses arguments.
+   *
+   * @param args Command-line arguments
+   * @param callback Status callback
+   * @return Whether arguments parsed successfully
+   */
+  Status initArgs(Map<SqlLineInitArg, Collection<String>> arg2Value,
+      Map<String, String> propertyValues,
+      DispatchCallback callback) {
     Status status = Status.OK;
 
-    // if a script file was specified, run the file and quit
-    if (getOpts().getRun() != null) {
-      dispatch(COMMAND_PREFIX + "run \"" + getOpts().getRun() + "\"", callback);
-      if (callback.isFailure()) {
-        status = Status.OTHER;
+    for (Map.Entry<String, String> entrySet: propertyValues.entrySet()) {
+      if (!getOpts().set(entrySet.getKey(), entrySet.getValue(), true)) {
+        return Status.ARGS;
       }
-      dispatch(COMMAND_PREFIX + "quit", new DispatchCallback());
+    }
+    boolean quitAfter = false;
+    for (Map.Entry<SqlLineInitArg, Collection<String>> mapEntry
+        : arg2Value.entrySet()) {
+      final SqlLineInitArg arg = mapEntry.getKey();
+      for (String string : mapEntry.getValue()) {
+        final DispatchCallback dispatchCallback = new DispatchCallback();
+        if (map.get(arg) != null) {
+          map.get(arg).action(string, arg2Value, dispatchCallback);
+        } else {
+          if (arg.isQuitAfter()) {
+            quitAfter = true;
+          }
+          if (arg == COMMANDS) {
+            dispatch(string, callback);
+            exit = true;
+          } else if (arg.getCommand() != null) {
+            dispatch(arg.getCommand() + " " + string, dispatchCallback);
+          }
+        }
+        if (arg.failIfActionNotSuccessful() && dispatchCallback.isFailure()) {
+          status = Status.OTHER;
+        }
+      }
+    }
+    if (!exit && quitAfter) {
+      dispatch("!quit", new DispatchCallback());
     }
 
     return status;
@@ -487,6 +480,13 @@ public class SqlLine {
    */
   public Status begin(String[] args, InputStream inputStream,
       boolean saveHistory) throws IOException {
+    Map<SqlLineInitArg, Collection<String>> argValues = new TreeMap<>();
+    Map<String, String> propertyValues = new TreeMap<>();
+    Status status = parseArgs(args, argValues, propertyValues);
+    if (status == Status.ARGS) {
+      usage();
+      return status;
+    }
     try {
       getOpts().load();
     } catch (Exception e) {
@@ -511,7 +511,7 @@ public class SqlLine {
     }
 
     final DispatchCallback callback = new DispatchCallback();
-    Status status = initArgs(args, callback);
+    status = initArgs(argValues, propertyValues, callback);
     switch (status) {
     case ARGS:
       usage();

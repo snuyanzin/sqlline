@@ -18,8 +18,12 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -806,7 +810,10 @@ public class SqlLineArgsTest {
           "TIGER"
       };
       DispatchCallback dc = new DispatchCallback();
-      sqlLine.initArgs(args, dc);
+      Map<SqlLineInitArg, Collection<String>> arg2Value = new TreeMap<>();
+      Map<String, String> propertyValues = new TreeMap<>();
+      sqlLine.parseArgs(args, arg2Value, propertyValues);
+      sqlLine.initArgs(arg2Value, propertyValues, dc);
       os.reset();
       sqlLine.runCommands(Collections.singletonList("values 1;"), dc);
       final String output = os.toString("UTF8");
@@ -864,7 +871,10 @@ public class SqlLineArgsTest {
           "TIGER"
       };
       DispatchCallback callback = new DispatchCallback();
-      sqlLine.initArgs(args, callback);
+      Map<SqlLineInitArg, Collection<String>> arg2Value = new TreeMap<>();
+      Map<String, String> propertyValues = new TreeMap<>();
+      sqlLine.parseArgs(args, arg2Value, propertyValues);
+      sqlLine.initArgs(arg2Value, propertyValues, callback);
       // If sqlline is not initialized, handleSQLException will print
       // the entire stack trace.
       // To prevent that, forcibly set init to true.
@@ -1294,7 +1304,10 @@ public class SqlLineArgsTest {
           "TIGER"
       };
       DispatchCallback callback = new DispatchCallback();
-      sqlLine.initArgs(args, callback);
+      Map<SqlLineInitArg, Collection<String>> arg2Value = new TreeMap<>();
+      Map<String, String> propertyValues = new HashMap<>();
+      sqlLine.parseArgs(args, arg2Value, propertyValues);
+      sqlLine.initArgs(arg2Value, propertyValues, callback);
       Deencapsulation.setField(sqlLine, "initComplete", true);
       sqlLine.getConnection();
       sqlLine.runCommands(

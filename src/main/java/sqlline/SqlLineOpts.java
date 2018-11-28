@@ -341,7 +341,9 @@ public class SqlLineOpts implements Completer {
       try {
         valueToSet = value instanceof Integer || value.getClass() == int.class
           ? value : Integer.parseInt(String.valueOf(value));
-      } catch (Exception ignored) {
+      } catch (Exception e) {
+        sqlLine.handleException(e);
+        return;
       }
       break;
     case BOOLEAN:
