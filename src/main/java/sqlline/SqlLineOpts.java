@@ -12,6 +12,9 @@
 package sqlline;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
@@ -134,25 +137,28 @@ public class SqlLineOpts implements Completer {
 
     String baseDir = System.getProperty(SqlLine.SQLLINE_BASE_DIR);
     if (baseDir != null && baseDir.length() > 0) {
-      File saveDir = new File(baseDir).getAbsoluteFile();
-      saveDir.mkdirs();
-      return saveDir;
+      Path saveDir = Paths.get(baseDir).toAbsolutePath();
+      try {
+        Files.createDirectories(saveDir);
+      } catch (Exception ignored) {
+        // ignored
+      }
+      return saveDir.toFile();
     }
 
-    File f =
-        new File(
+    Path f =
+        Paths.get(
             System.getProperty("user.home"),
             ((System.getProperty("os.name")
                 .toLowerCase(Locale.ROOT).contains("windows"))
-                ? "" : ".") + "sqlline")
-            .getAbsoluteFile();
+                ? "" : ".") + "sqlline").toAbsolutePath();
     try {
-      f.mkdirs();
+      Files.createDirectories(f);
     } catch (Exception e) {
       // ignore
     }
 
-    return f;
+    return f.toFile();
   }
 
   @Override public void complete(LineReader lineReader, ParsedLine parsedLine,
@@ -235,6 +241,30 @@ public class SqlLineOpts implements Completer {
         set(key.substring(PROPERTY_PREFIX.length()), props.getProperty(key));
       }
     }
+  }
+
+  public SqlLineProperty getPropertyByName(String propertyName) {
+    return BuiltInProperty.valueOf(propertyName, true);
+  }
+
+  void resetAll(boolean quiet) {
+    for (SqlLineProperty property: propertiesMap.keySet()) {
+      if (property.isReadOnly()) {
+        continue;
+      }
+      reset(property, quiet);
+    }
+  }
+
+  boolean reset(SqlLineProperty key, boolean quiet) {
+    if (key.isReadOnly()) {
+      if (!quiet) {
+        sqlLine.error(sqlLine.loc("property-readonly", key));
+        return false;
+      }
+    }
+    set(key, key.defaultValue());
+    return true;
   }
 
   public void set(String key, String value) {
@@ -673,6 +703,21 @@ public class SqlLineOpts implements Completer {
 
   public File getPropertiesFile() {
     return rcFile;
+  }
+
+  public void setPropertiesFile(String propertiesFile) {
+    try {
+      resetAll(true);
+      File rcFile = Paths.get(propertiesFile).toFile();
+
+      if (rcFile.exists()) {
+        InputStream in = new FileInputStream(rcFile);
+        load(in);
+        in.close();
+      }
+    } catch (Exception e) {
+      sqlLine.handleException(e);
+    }
   }
 
   public void setRun(String runFile) {

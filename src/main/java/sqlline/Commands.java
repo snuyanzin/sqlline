@@ -631,24 +631,27 @@ public class Commands {
     }
 
     String propertyName = split[1].toLowerCase(Locale.ROOT);
-
     if ("all".equals(propertyName)) {
-      sqlLine.setOpts(new SqlLineOpts(sqlLine));
+      sqlLine.getOpts().resetAll(false);
       sqlLine.output(sqlLine.loc("reset-all-props"));
       // no need to auto save, since its off by default
       callback.setToSuccess();
       return;
     }
 
-    if (!sqlLine.getOpts().hasProperty(propertyName)) {
+    final SqlLineProperty property =
+        sqlLine.getOpts().getPropertyByName(propertyName);
+    if (property == null) {
       sqlLine.error(sqlLine.loc("no-specified-prop", propertyName));
       callback.setToFailure();
       return;
     }
 
     try {
-      String defaultValue = new SqlLineOpts(sqlLine).get(propertyName);
-      setProperty(propertyName, defaultValue, "reset-prop", callback);
+      final String defaultValue = String.valueOf(property.defaultValue());
+      sqlLine.getOpts().reset(property, false);
+      sqlLine.output(sqlLine.loc("reset-prop", propertyName, defaultValue));
+      callback.setToSuccess();
     } catch (Exception e) {
       callback.setToFailure();
       sqlLine.error(e);

@@ -151,8 +151,6 @@ public class SqlLineArgsTest {
       // Check output before status. It gives a better clue what went wrong.
       assertThat(toLinux(pair.output), outputMatcher);
       assertThat(pair.status, statusMatcher);
-      final boolean delete = scriptFile.delete();
-      assertThat(delete, is(true));
     } catch (Throwable t) {
       // fail
       throw new RuntimeException(t);

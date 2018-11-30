@@ -100,7 +100,7 @@
         <!-- Generate manual.html from manual.xml. Then you must manually
              generate manual.txt by copy-pasting from manual.html in a web
              browser. -->
-        <groupId>com.agilejava.docbkx</groupId>
+        <!--groupId>com.agilejava.docbkx</groupId>
         <artifactId>docbkx-maven-plugin</artifactId>
         <version>${docbkx-maven-plugin.version}</version>
         <executions>
@@ -124,7 +124,7 @@
           <includes>manual.xml</includes>
         </configuration>
       </plugin>
-      <plugin>
+      <plugin-->
         <groupId>de.thetaphi</groupId>
         <artifactId>forbiddenapis</artifactId>
         <configuration>
