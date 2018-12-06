@@ -73,12 +73,10 @@ public class SqlLineArgsTest {
       sqlLine.setOutputStream(beelineOutputStream);
       sqlLine.setErrorStream(beelineOutputStream);
       final InputStream is = new ByteArrayInputStream(new byte[0]);
-      String[] argsWithConfig = new String[args.length + 1];
-      System.arraycopy(args, 0, argsWithConfig, 0, args.length);
+      final Collection<String> argList = new ArrayList<>(Arrays.asList(args));
       final File tmpConfFile = createTempFile("tmpsqlline", "properties");
-      argsWithConfig[args.length] =
-          "--propertiesFile=" + tmpConfFile.getAbsolutePath();
-      return sqlLine.begin(argsWithConfig, is, saveHistory);
+      argList.add("--propertiesFile=" + tmpConfFile.getAbsolutePath());
+      return sqlLine.begin(argList.toArray(new String[0]), is, saveHistory);
     } catch (Throwable t) {
       // fail
       throw new RuntimeException(t);
