@@ -514,7 +514,6 @@ public class SqlLineArgsTest {
                   PrintStream err,
                   Path currentDir,
                   String[] argv) {
-          return;
         }
       };
 
