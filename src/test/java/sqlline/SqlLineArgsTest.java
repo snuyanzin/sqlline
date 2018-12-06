@@ -14,7 +14,6 @@ package sqlline;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -76,10 +75,9 @@ public class SqlLineArgsTest {
       final InputStream is = new ByteArrayInputStream(new byte[0]);
       String[] argsWithConfig = new String[args.length + 1];
       System.arraycopy(args, 0, argsWithConfig, 0, args.length);
-      Path sqllinePropertiesPath =
-          Paths.get("src", "test", "resources", "sqlline.properties");
-      argsWithConfig[args.length] = "--propertiesFile="
-          + sqllinePropertiesPath.toAbsolutePath().toString();
+      final File tmpConfFile = createTempFile("tmpsqlline", "properties");
+      argsWithConfig[args.length] =
+          "--propertiesFile=" + tmpConfFile.getAbsolutePath();
       return sqlLine.begin(argsWithConfig, is, saveHistory);
     } catch (Throwable t) {
       // fail
@@ -170,11 +168,12 @@ public class SqlLineArgsTest {
     return s.replaceAll("\r\n", "\n");
   }
 
-  private File createTempFile(String prefix, String suffix) {
+  private static File createTempFile(String prefix, String suffix) {
     return createTempFile(prefix, suffix, null);
   }
 
-  private File createTempFile(String prefix, String suffix, File directory) {
+  private static File createTempFile(
+      String prefix, String suffix, File directory) {
     try {
       File scriptFile = File.createTempFile(prefix, suffix, directory);
       scriptFile.deleteOnExit();
