@@ -361,7 +361,7 @@ public class SqlLine {
 
   Status parseArgs(
       String[] args, Map<SqlLineInitArg, Collection<String>> arg2Value,
-      Map<String, String> propertyValues) {
+      Map<SqlLineProperty, String> propertyValues) {
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals("--help") || args[i].equals("-h")) {
         return Status.ARGS;
@@ -381,7 +381,13 @@ public class SqlLine {
               arg2Value.put(arg, Collections.singleton(parts[1]));
             }
           } else {
-            propertyValues.put(parts[0],
+            SqlLineProperty property = BuiltInProperty.valueOf(parts[0], true);
+            if (property == null
+                || (parts.length < 2
+                    && property.type() != SqlLineProperty.Type.BOOLEAN)) {
+              return Status.ARGS;
+            }
+            propertyValues.put(property,
                 parts.length >= 2 ? parts[1] : Boolean.TRUE.toString());
           }
         }
@@ -418,11 +424,12 @@ public class SqlLine {
    * @return Whether arguments parsed successfully
    */
   Status initArgs(Map<SqlLineInitArg, Collection<String>> arg2Value,
-      Map<String, String> propertyValues,
+      Map<SqlLineProperty, String> propertyValues,
       DispatchCallback callback) {
     Status status = Status.OK;
 
-    for (Map.Entry<String, String> entrySet: propertyValues.entrySet()) {
+    for (Map.Entry<SqlLineProperty, String> entrySet
+        : propertyValues.entrySet()) {
       if (!getOpts().set(entrySet.getKey(), entrySet.getValue(), true)) {
         return Status.ARGS;
       }
@@ -481,14 +488,19 @@ public class SqlLine {
   public Status begin(String[] args, InputStream inputStream,
       boolean saveHistory) throws IOException {
     Map<SqlLineInitArg, Collection<String>> argValues = new TreeMap<>();
-    Map<String, String> propertyValues = new TreeMap<>();
+    Map<SqlLineProperty, String> propertyValues = new TreeMap<>();
     Status status = parseArgs(args, argValues, propertyValues);
     if (status == Status.ARGS) {
       usage();
       return status;
     }
     try {
-      getOpts().load();
+      if (propertyValues.containsKey(BuiltInProperty.PROPERTIES_FILE)) {
+        getOpts().setPropertiesFile(
+            propertyValues.get(BuiltInProperty.PROPERTIES_FILE));
+      } else {
+        getOpts().load();
+      }
     } catch (Exception e) {
       handleException(e);
     }

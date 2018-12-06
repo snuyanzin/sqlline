@@ -11,12 +11,8 @@
 */
 package sqlline;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 
 import org.junit.After;
@@ -24,6 +20,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+
+import static sqlline.SqlLineArgsTest.begin;
 
 /**
  * Tests for auxiliary methods in {@link SqlLineHighlighter}.
@@ -262,12 +260,7 @@ public class SqlLineHighlighterLowLevelTest {
   static SqlLine getSqlLine(String colorScheme) throws IOException {
     SqlLine sqlLine = new SqlLine();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
-    PrintStream sqllineOutputStream =
-        new PrintStream(os, false, StandardCharsets.UTF_8.name());
-    sqlLine.setOutputStream(sqllineOutputStream);
-    sqlLine.setErrorStream(sqllineOutputStream);
-    final InputStream is = new ByteArrayInputStream(new byte[0]);
-    sqlLine.begin(new String[]{"-e", "!set maxwidth 80"}, is, false);
+    begin(sqlLine, os, false, "-e", "!set maxwidth 80");
     sqlLine.getOpts().setColorScheme(colorScheme);
     return sqlLine;
   }

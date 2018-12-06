@@ -59,6 +59,7 @@ import static sqlline.BuiltInProperty.NULL_VALUE;
 import static sqlline.BuiltInProperty.NUMBER_FORMAT;
 import static sqlline.BuiltInProperty.OUTPUT_FORMAT;
 import static sqlline.BuiltInProperty.PROMPT;
+import static sqlline.BuiltInProperty.PROPERTIES_FILE;
 import static sqlline.BuiltInProperty.RIGHT_PROMPT;
 import static sqlline.BuiltInProperty.ROW_LIMIT;
 import static sqlline.BuiltInProperty.SHOW_ELAPSED_TIME;
@@ -83,7 +84,6 @@ public class SqlLineOpts implements Completer {
       PROPERTY_PREFIX + "system.exit";
   private static final Date TEST_DATE = new Date();
   private SqlLine sqlLine;
-  private File rcFile = new File(saveDir(), "sqlline.properties");
   private String runFile;
   private Set<String> propertyNames;
 
@@ -105,6 +105,7 @@ public class SqlLineOpts implements Completer {
               put(MAX_HISTORY_ROWS, SqlLineOpts.this::setMaxHistoryRows);
               put(MODE, SqlLineOpts.this::setMode);
               put(NUMBER_FORMAT, SqlLineOpts.this::setNumberFormat);
+              put(PROPERTIES_FILE, SqlLineOpts.this::setPropertiesFile);
               put(TIME_FORMAT, SqlLineOpts.this::setTimeFormat);
               put(TIMESTAMP_FORMAT, SqlLineOpts.this::setTimestampFormat);
             }
@@ -171,7 +172,12 @@ public class SqlLineOpts implements Completer {
   }
 
   public void save() throws IOException {
-    OutputStream out = new FileOutputStream(rcFile);
+    OutputStream out =
+        new FileOutputStream(
+            new File(
+                String.valueOf(
+                    propertiesMap.getOrDefault(
+                        PROPERTIES_FILE, PROPERTIES_FILE.defaultValue()))));
     save(out);
     out.close();
   }
@@ -218,6 +224,8 @@ public class SqlLineOpts implements Completer {
   }
 
   public void load() throws IOException {
+    final File rcFile =
+        new File(String.valueOf(propertiesMap.get(PROPERTIES_FILE)));
     if (rcFile.exists()) {
       InputStream in = new FileInputStream(rcFile);
       load(in);
@@ -238,7 +246,9 @@ public class SqlLineOpts implements Completer {
         continue;
       }
       if (key.startsWith(PROPERTY_PREFIX)) {
-        set(key.substring(PROPERTY_PREFIX.length()), props.getProperty(key));
+        if (!key.endsWith(PROPERTIES_FILE.propertyName())) {
+          set(key.substring(PROPERTY_PREFIX.length()), props.getProperty(key));
+        }
       }
     }
   }
@@ -288,9 +298,14 @@ public class SqlLineOpts implements Completer {
       }
       return false;
     }
+    return set(property, value, quiet);
+  }
+
+  boolean set(SqlLineProperty property, String value, boolean quiet) {
     if (property.isReadOnly()) {
       if (!quiet) {
-        sqlLine.error(sqlLine.loc("property-readonly", key));
+        sqlLine.error(
+            sqlLine.loc("property-readonly", property.propertyName()));
       }
       return false;
     } else {
@@ -702,18 +717,27 @@ public class SqlLineOpts implements Completer {
   }
 
   public File getPropertiesFile() {
-    return rcFile;
+    return new File(get(PROPERTIES_FILE));
   }
 
   public void setPropertiesFile(String propertiesFile) {
     try {
-      resetAll(true);
-      File rcFile = Paths.get(propertiesFile).toFile();
-
-      if (rcFile.exists()) {
-        InputStream in = new FileInputStream(rcFile);
+      if (propertiesFile == null) {
+        return;
+      }
+      File newRcFile = Paths.get(propertiesFile).toFile();
+      if (newRcFile.exists()) {
+        resetAll(true);
+        InputStream in = new FileInputStream(newRcFile);
         load(in);
         in.close();
+        set(PROPERTIES_FILE, propertiesFile);
+      } else if (DEFAULT.equalsIgnoreCase(propertiesFile)) {
+        resetAll(true);
+        load();
+        set(PROPERTIES_FILE, PROPERTIES_FILE.defaultValue());
+      } else {
+        sqlLine.error("wrong propertiesFile " + propertiesFile);
       }
     } catch (Exception e) {
       sqlLine.handleException(e);

@@ -16,6 +16,8 @@ import java.io.File;
 import org.jline.reader.LineReader;
 import org.jline.reader.impl.history.DefaultHistory;
 
+import static sqlline.SqlLineOpts.saveDir;
+
 /**
  * Built-in properties of SqlLine.
  *
@@ -39,7 +41,7 @@ public enum BuiltInProperty implements SqlLineProperty {
   FORCE("force", Type.BOOLEAN, false),
   HEADER_INTERVAL("headerInterval", Type.INTEGER, 100),
   HISTORY_FILE("historyFile", Type.STRING,
-      new File(SqlLineOpts.saveDir(), "history").getAbsolutePath()),
+      new File(saveDir(), "history").getAbsolutePath()),
   INCREMENTAL("incremental", Type.BOOLEAN, true),
   ISOLATION("isolation", Type.STRING, "TRANSACTION_REPEATABLE_READ"),
   MAX_COLUMN_WIDTH("maxColumnWidth", Type.INTEGER, -1),
@@ -59,6 +61,9 @@ public enum BuiltInProperty implements SqlLineProperty {
   SILENT("silent", Type.BOOLEAN, false),
   OUTPUT_FORMAT("outputFormat", Type.STRING, "table"),
   PROMPT("prompt", Type.STRING, "sqlline> "),
+  PROPERTIES_FILE("propertiesFile", Type.STRING,
+      new File(saveDir(), "sqlline.properties").getAbsolutePath(),
+      false, false),
   RIGHT_PROMPT("rightPrompt", Type.STRING, ""),
   ROW_LIMIT("rowLimit", Type.INTEGER, 0),
   SHOW_ELAPSED_TIME("showElapsedTime", Type.BOOLEAN, true),
