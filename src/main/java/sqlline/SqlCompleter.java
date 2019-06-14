@@ -13,63 +13,85 @@ package sqlline;
 
 import java.sql.DatabaseMetaData;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.jline.reader.Candidate;
 import org.jline.reader.impl.completer.StringsCompleter;
+import org.jline.utils.AttributedString;
 
 /**
  * Suggests completions for SQL statements.
  */
 class SqlCompleter extends StringsCompleter {
   SqlCompleter(SqlLine sqlLine, boolean skipMeta) {
-    super(getCompletions(sqlLine, skipMeta));
+    super();
+    for (Map.Entry<String, Collection<String>> candidatesMapEntry
+        : getCompletions(sqlLine, skipMeta).entrySet()) {
+      for (String candidateName: candidatesMapEntry.getValue()) {
+        candidates.add(
+            new Candidate(AttributedString.stripAnsi(candidateName),
+                candidateName, candidatesMapEntry.getKey(),
+                null, null, null, true));
+      }
+    }
   }
 
-  private static Iterable<String> getCompletions(
+  private static Map<String, Collection<String>> getCompletions(
       SqlLine sqlLine, boolean skipMeta) {
-    Set<String> completions = new TreeSet<>();
-
-    StringBuilder keywords = new StringBuilder();
+    Map<String, Collection<String>> completions = new TreeMap<>();
 
     // now add the keywords from the current connection
 
     final DatabaseMetaData meta = sqlLine.getDatabaseConnection().meta;
     try {
-      keywords.append(",").append(meta.getSQLKeywords());
+      final Set<String> keywords = Stream.of(
+          meta.getSQLKeywords().split(","))
+              .collect(Collectors.toCollection(TreeSet::new));
+      completions.put("Keywords", keywords);
     } catch (Throwable t) {
       // ignore
     }
     try {
-      keywords.append(",").append(meta.getStringFunctions());
+      final Set<String> stringFunctions = Stream.of(
+          meta.getStringFunctions().split(","))
+              .collect(Collectors.toCollection(TreeSet::new));
+      completions.put("String functions", stringFunctions);
     } catch (Throwable t) {
       // ignore
     }
     try {
-      keywords.append(",").append(meta.getNumericFunctions());
+      final Set<String> numericFunctions = Stream.of(
+          meta.getNumericFunctions().split(","))
+              .collect(Collectors.toCollection(TreeSet::new));
+      completions.put("Numeric functions", numericFunctions);
     } catch (Throwable t) {
       // ignore
     }
     try {
-      keywords.append(",").append(meta.getSystemFunctions());
+      final Set<String> systemFunctions = Stream.of(
+          meta.getSystemFunctions().split(","))
+              .collect(Collectors.toCollection(TreeSet::new));
+      completions.put("System functions", systemFunctions);
     } catch (Throwable t) {
       // ignore
     }
     try {
-      keywords.append(",").append(meta.getTimeDateFunctions());
+      final Set<String> timedateFunctions = Stream.of(
+          meta.getTimeDateFunctions().split(","))
+              .collect(Collectors.toCollection(TreeSet::new));
+      completions.put("Time date functions", timedateFunctions);
     } catch (Throwable t) {
       // ignore
-    }
-
-    for (StringTokenizer tok = new StringTokenizer(keywords.toString(), ", ");
-        tok.hasMoreTokens();) {
-      completions.add(tok.nextToken());
     }
 
     // now add the tables and columns from the current connection
     if (!skipMeta) {
-      completions.addAll(sqlLine.getColumnNames(meta));
+      completions.put("Columns", sqlLine.getColumnNames(meta));
     }
 
-    completions.addAll(Dialect.DEFAULT_KEYWORD_SET);
+    completions.computeIfAbsent("Keywords", k -> new TreeSet<>());
+    completions.get("Keywords").addAll(Dialect.DEFAULT_KEYWORD_SET);
     // set the Strings that will be completed
     return completions;
   }
