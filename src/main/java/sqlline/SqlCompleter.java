@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.jline.reader.Candidate;
+import org.jline.reader.*;
 import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.utils.AttributedString;
 
@@ -24,8 +24,10 @@ import org.jline.utils.AttributedString;
  * Suggests completions for SQL statements.
  */
 class SqlCompleter extends StringsCompleter {
+  protected SqlLine sqlLine;
   SqlCompleter(SqlLine sqlLine, boolean skipMeta) {
     super();
+    this.sqlLine = sqlLine;
     for (Map.Entry<String, Collection<String>> candidatesMapEntry
         : getCompletions(sqlLine, skipMeta).entrySet()) {
       for (String candidateName: candidatesMapEntry.getValue()) {
@@ -35,6 +37,23 @@ class SqlCompleter extends StringsCompleter {
                 null, null, null, true));
       }
     }
+  }
+
+  @Override
+  public void complete(
+      LineReader reader, ParsedLine commandLine, List<Candidate> candidates) {
+    try {
+      String sql = reader.getBuffer().substring(0);
+      sqlLine.getLineReader().getParser().parse(sql, sql.length(),
+          Parser.ParseContext.ACCEPT_LINE);
+    } catch (EOFError e) {
+      final String missing = e.getMissing();
+      if (missing != null
+          && (missing.endsWith("quote") || missing.endsWith("*/"))) {
+        return;
+      }
+    }
+    super.complete(reader, commandLine, candidates);
   }
 
   private static Map<String, Collection<String>> getCompletions(
@@ -87,7 +106,7 @@ class SqlCompleter extends StringsCompleter {
 
     // now add the tables and columns from the current connection
     if (!skipMeta) {
-      completions.put("Columns", sqlLine.getColumnNames(meta));
+      completions.putAll(sqlLine.getTableColumnNames(meta));
     }
 
     completions.computeIfAbsent("Keywords", k -> new TreeSet<>());

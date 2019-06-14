@@ -17,6 +17,7 @@ import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
 import org.jline.reader.LineReader;
 import org.jline.reader.ParsedLine;
+import org.jline.reader.Parser;
 
 /**
  * Completer for SQLLine. It dispatches to sub-completers based on the
@@ -38,7 +39,9 @@ class SqlLineCompleter
         && !bufferStr.startsWith(SqlLine.COMMAND_PREFIX + "sql")) {
       sqlLine.getCommandCompleter().complete(reader, line, candidates);
     } else if (sqlLine.getDatabaseConnection() != null
-        && sqlLine.getDatabaseConnection().getSqlCompleter() != null) {
+        && sqlLine.getDatabaseConnection().getSqlCompleter() != null
+        && SqlLineParser.isSql(
+            sqlLine, bufferStr, Parser.ParseContext.ACCEPT_LINE)) {
       sqlLine.getDatabaseConnection().getSqlCompleter()
           .complete(reader, line, candidates);
     }

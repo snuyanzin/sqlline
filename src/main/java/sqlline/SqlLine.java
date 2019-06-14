@@ -987,42 +987,42 @@ public class SqlLine {
         new String[] {"TABLE"});
   }
 
-  Set<String> getColumnNames(DatabaseMetaData meta) {
-    Set<String> names = new HashSet<>();
+  Map<String, Set<String>> getTableColumnNames(DatabaseMetaData meta) {
+    Map<String, Set<String>> names = new HashMap<>();
+    final String tables = "Tables";
+    final String cols = "Columns";
+    names.put(tables, new HashSet<>());
+    names.put(cols, new HashSet<>());
     info(loc("building-tables"));
 
-    try {
-      ResultSet columns = getColumns("%");
+    try (ResultSet columns = getColumns("%")) {
+      int total = getSize(columns);
+      int index = 0;
 
-      try {
-        int total = getSize(columns);
-        int index = 0;
+      while (columns.next()) {
+        // add the following strings:
+        // 1. column name
+        // 2. table name
+        // 3. tablename.columnname
 
-        while (columns.next()) {
-          // add the following strings:
-          // 1. column name
-          // 2. table name
-          // 3. tablename.columnname
-
-          progress(index++, total);
-          final String tableName = columns.getString("TABLE_NAME");
-          final String columnName = columns.getString("COLUMN_NAME");
-          names.add(tableName);
-          names.add(columnName);
-          names.add(tableName + "." + columnName);
-        }
-
-        progress(index, index);
-      } finally {
-        columns.close();
+        progress(index++, total);
+        final String schemaName = columns.getString("TABLE_SCHEM");
+        final String tableName = columns.getString("TABLE_NAME");
+        final String columnName = columns.getString("COLUMN_NAME");
+        names.get(tables).add(schemaName + "." + tableName);
+        names.get(tables).add(tableName);
+        names.get(cols).add(columnName);
+        names.get(cols).add(tableName + "." + columnName);
       }
+
+      progress(index, index);
 
       info(loc("done"));
 
       return names;
     } catch (Throwable t) {
       handleException(t);
-      return Collections.emptySet();
+      return Collections.emptyMap();
     }
   }
 
