@@ -300,7 +300,8 @@ abstract class Rows implements Iterator<Rows.Row> {
             : escapeOutput
                 ? escapeControlSymbols(values[i])
                 : values[i];
-        sizes[i] = values[i] == null ? 1 : values[i].length();
+        sizes[i] = values[i] == null ? 1 : Arrays.stream(values[i].split("\n"))
+            .map(String::length).max(Integer::compare).orElse(1);
       }
     }
 
